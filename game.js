@@ -13,24 +13,35 @@ const playerSpeed = 5;     // Speed variable for handling adjustments
 // Pattern: Movement Flags
 let movingLeft = false;
 let movingRight = false;
+let accelerating = false;
+let braking = false;
 
 // --- BOUNDARY CLAMPS ---
-    // Picks limits based on the 50px left margin and 380px road width
-    const leftLimit = 50;
-    const rightLimit = 430; // 50 + 380
+// Picks limits based on the 50px left margin and 380px road width
+const leftLimit = 50;
+const rightLimit = 430; // 50 + 380
 
-// The infinite scrolling tracker
+// Clamp speed limits
+const minSpeed = 2;  // Keep a base movement speed, so it never drops to 0 or negative
+const maxSpeed = 12; // A reasonable safe top velocity limit
+
+// The mutable scrolling engine variables
 let scrolly = 0;
+let scrollSpeed = 4;      // Turned into a mutable variable to persist over time
 
 // Pattern: Keyboard Event Listeners
 document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') movingLeft = true;
     if (e.key === 'ArrowRight') movingRight = true;
+    if (e.key === 'ArrowUp') accelerating = true;     // Track acceleration press
+    if (e.key === 'ArrowDown') braking = true;        // Track brake press
 });
 
 document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowLeft') movingLeft = false;
     if (e.key === 'ArrowRight') movingRight = false;
+    if (e.key === 'ArrowUp') accelerating = false;    // Track acceleration release
+    if (e.key === 'ArrowDown') braking = false;       // Track brake release
 });
 
 function gameloop(){
@@ -47,8 +58,17 @@ function gameloop(){
     // Prevent player's  right edge from moving past the right edge of the road
     if (playerX + playerSize > rightLimit) playerX = rightLimit - playerSize;
 
-    // Advance the infinite scroll  tracker
-    scrolly += 4; // This is scroll speed
+    // READ FLAGS & CHANGE VALUE 
+    // We use a small fraction step size (0.1) so acceleration builds up smoothly over multiple frames
+    if (accelerating) scrollSpeed += 0.1; 
+    if (braking) scrollSpeed -= 0.1;     
+
+    // Clamp speed
+    if (scrollSpeed < minSpeed) scrollSpeed = minSpeed;
+    if (scrollSpeed > maxSpeed) scrollSpeed = maxSpeed;
+
+    // Advance the infinite scroll tracker using your mutable speed variable
+    scrolly += scrollSpeed; // This is scroll speed
 
     // The Modulo  Trick: Keeps offset resetting between 0 and 399
     let offset = scrolly % canvas.height;
