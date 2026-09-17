@@ -14,6 +14,11 @@ const playerSpeed = 5;     // Speed variable for handling adjustments
 let movingLeft = false;
 let movingRight = false;
 
+// --- BOUNDARY CLAMPS ---
+    // Picks limits based on the 50px left margin and 380px road width
+    const leftLimit = 50;
+    const rightLimit = 430; // 50 + 380
+
 // The infinite scrolling tracker
 let scrolly = 0;
 
@@ -35,6 +40,12 @@ function gameloop(){
     // Pattern: Inside the loop, adjust playerX based on the flags
     if (movingLeft) playerX -= playerSpeed;
     if (movingRight) playerX += playerSpeed;
+
+    // Prevent player's from moving past the left edge of the road
+    if (playerX < leftLimit) playerX = leftLimit;
+
+    // Prevent player's  right edge from moving past the right edge of the road
+    if (playerX + playerSize > rightLimit) playerX = rightLimit - playerSize;
 
     // Advance the infinite scroll  tracker
     scrolly += 4; // This is scroll speed
