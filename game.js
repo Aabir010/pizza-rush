@@ -1,6 +1,10 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
+// --- HOUSE SPAWNING ENGINE STATE ---
+let houses = [];          // Our dynamic list of active houses
+let houseSpawnTimer = 0; // TRacks frames passed since the last spawn
+
 // Player position (Centered horizontally, 3/4 down the 720px tall canvas)
 const playerSize = 30;
 
@@ -43,11 +47,6 @@ document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowUp') accelerating = false;    // Track acceleration release
     if (e.key === 'ArrowDown') braking = false;       // Track brake release
 });
-
-
-// --- HOUSE SPAWNING ENGINE STATE ---
-let houses = [];          // Our dynamic list of active houses
-let houseSpawnTimer = 0; // TRacks frames passed since the last spawn
 
 
 function gameloop(){
@@ -100,12 +99,16 @@ function gameloop(){
         houseSpawnTimer = 0; // Reset the timer back to zero
     }
 
-    // Update: Move every active house down at the world's scroll speed
+    // 2. Update: Move every active house down at the world's scroll speed
     for (let i = 0; i < houses.length; i++) {
         houses[i].y += scrollSpeed;  // Makes them look perfectly anchored to the moving street
     }
 
-    //DRAW: Render every  house currently inside our array
+    // --- GARBAGE COLLECTION CLEANUP ---
+    // Keep only houses that are still on or above the canvas screen area
+    houses = houses.filter(h => h.y < canvas.height);
+
+    // 3. DRAW: Render every  house currently inside our array
     ctx.fillStyle = '#ff6b6b' // Coral/Red color for delivery target houses
     for (let i = 0; i < houses.length; i++) {
         let h = houses[i];
