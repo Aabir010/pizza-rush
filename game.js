@@ -5,6 +5,9 @@ const ctx = canvas.getContext('2d');
 let houses = [];          // Our dynamic list of active houses
 let houseSpawnTimer = 0; // TRacks frames passed since the last spawn
 
+// --- PIZZA PROJETILE ENGINE STATE ---
+let pizzas = []; //Our dynamic list of active pizzas in flight
+
 // Player position (Centered horizontally, 3/4 down the 720px tall canvas)
 const playerSize = 30;
 
@@ -39,8 +42,28 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') movingRight = true;
     if (e.key === 'ArrowUp') accelerating = true;     // Track acceleration press
     if (e.key === 'ArrowDown') braking = true;        // Track brake press
+
+    // SPAWN PIZZA ON SPACEBAR TAP
+    if ((e.key === ' ' || e.code === 'Space') && !e.repeat){
+        // Determine horizontal velocity based on player's current steering direction
+        let pizzaVx = 0;
+        if (movingLeft) pizzaVx = -4;
+        if (movingRight) pizzaVx = 4;
+
+        let newPizza = {
+            // Spawn the pizza perfectly centered right at the front edge of our player box
+            x: playerX + (playerSize / 2) - 6,
+            y: playerY,
+            width: 12,
+            height: 12,
+            vx: pizzaVx, // Horizontal flight speed
+            vy: -8       // Upward flight speed (flies faster that the  world scrolls)
+        };
+        pizzas.push(newPizza);
+    }
 });
 
+// --- KEYUP LISTENER ---
 document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowLeft') movingLeft = false;
     if (e.key === 'ArrowRight') movingRight = false;
@@ -114,6 +137,27 @@ function gameloop(){
         let h = houses[i];
         ctx.fillRect(h.x, h.y, h.width, h.height);
     }
+
+    // ==========================================
+    // --- STEP 6: PIZZAS (UPDATE, CLEAN, DRAW) ---
+    // ==========================================
+    
+    //  1. UPDATE: Move every pizza along its trajectory vectors
+    for (let i = 0; i < pizzas.length; i++) {
+        pizzas[i].x += pizzas[i].vx;
+        pizzas[i].y += pizzas[i].vy;
+    }
+
+    // 2. GARBAGE COLLECTION: Delete pizzas  that fly off the top or sides of the screen
+    pizzas = pizzas.filter(p => p.y > -20 && p.x > 0 && p.x < canvas.width);
+
+    // 3. DRAW: Render every active pizza as a small yellow/orange box
+    ctx.fillStyle = '#ffcc00'; // Cheesy pizza yellow
+    for (let i = 0; i < pizzas.length; i++) {
+        let p = pizzas[i];
+        ctx.fillRect(p.x, p.y, p.width, p.height);
+    }
+
     // The Modulo  Trick: Keeps offset resetting between 0 and 399
     let offset = scrolly % canvas.height;
 
