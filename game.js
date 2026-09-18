@@ -71,6 +71,15 @@ document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowDown') braking = false;       // Track brake release
 });
 
+// --- UNIVERSAL AABB COLLISION DETECTION ---
+function isColliding(a, b) {
+    return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
+}
 
 function gameloop(){
     // Clear the  canvas
@@ -131,10 +140,18 @@ function gameloop(){
     // Keep only houses that are still on or above the canvas screen area
     houses = houses.filter(h => h.y < canvas.height);
 
-    // 3. DRAW: Render every  house currently inside our array
-    ctx.fillStyle = '#ff6b6b' // Coral/Red color for delivery target houses
+    // UNCONDITIONAL DRAW LOOP: Runs exactly once per item, purely rendering state
     for (let i = 0; i < houses.length; i++) {
         let h = houses[i];
+    
+    // 3. DRAW: Render every  house currently inside our array
+    // Decoupled drawing choice: read the state, pick the brush, paint it
+        if (h.hasDelivered) {
+            ctx.fillStyle = '#66bb6a'; // Green
+        } else {
+            ctx.fillStyle = '#ff6b6b'; // Coral Red
+        }
+        
         ctx.fillRect(h.x, h.y, h.width, h.height);
     }
 
@@ -148,8 +165,21 @@ function gameloop(){
         pizzas[i].y += pizzas[i].vy;
     }
 
+    // 1.5 NESTED COLLISION CHECK: Check every pizza against every house
+    for (let i = 0; i < pizzas.length; i++) {
+        let p = pizzas[i];
+        for (let j = 0; j < houses.length; j++) {
+            let h = houses[j];
+
+            if (!h.hasDelivered && isColliding(p, h)) {
+                h.hasDelivered = true; // State change only!
+                p.toRemove = true;     // State change only!
+            }
+        }
+    }
+
     // 2. GARBAGE COLLECTION: Delete pizzas  that fly off the top or sides of the screen
-    pizzas = pizzas.filter(p => p.y > -20 && p.x > 0 && p.x < canvas.width);
+    pizzas = pizzas.filter(p => p.y > -20 && p.x > 0 && p.x < canvas.width && !p.toRemove);
 
     // 3. DRAW: Render every active pizza as a small yellow/orange box
     ctx.fillStyle = '#ffcc00'; // Cheesy pizza yellow
