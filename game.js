@@ -123,7 +123,7 @@ function gameloop(){
 
     // Draw Street Segment 2 (Stacked directly ABOVE Segment 1)
     // Subtracking canvas.height positions it perfectly above the first segment
-    ctx.fillStyle = '#274de644'
+    ctx.fillStyle = '#333333'
     ctx.fillRect(50, offset - canvas.height, 380, canvas.height);
 
     // --- SCROLLING ROAD DASHES ---
