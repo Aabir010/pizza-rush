@@ -44,6 +44,12 @@ document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowDown') braking = false;       // Track brake release
 });
 
+
+// --- HOUSE SPAWNING ENGINE STATE ---
+let houses = [];          // Our dynamic list of active houses
+let houseSpawnTimer = 0; // TRacks frames passed since the last spawn
+
+
 function gameloop(){
     // Clear the  canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -70,6 +76,41 @@ function gameloop(){
     // Advance the infinite scroll tracker using your mutable speed variable
     scrolly += scrollSpeed; // This is scroll speed
 
+     // ==========================================
+    // ---: HOUSES (SPAWN, UPDATE, DRAW) ---
+    // ==========================================
+
+    // 1. SPAWN: Advance timer and check if it;s time to generate a house
+    houseSpawnTimer++;
+    if (houseSpawnTimer >= 120) {  // Every 120 frames (approx. 2 seconds at 60fps)
+        
+        // Randomly pick a lane side: Left side grass (10px) or Right side grass (440px)
+        // Road starts at 50 and ends at 430. Houses sit on the grass borders!
+        let randomX = Math.random() < 0.5 ? 10 :  440;
+
+        let newHouse = {
+            x: randomX,
+            y: -60,              // Start fully hidden above the visible canvas
+            width:  30,
+            height: 40,
+            hasDelivered: false
+        };
+
+        houses.push(newHouse); // Insert into our tracking roster
+        houseSpawnTimer = 0; // Reset the timer back to zero
+    }
+
+    // Update: Move every active house down at the world's scroll speed
+    for (let i = 0; i < houses.length; i++) {
+        houses[i].y += scrollSpeed;  // Makes them look perfectly anchored to the moving street
+    }
+
+    //DRAW: Render every  house currently inside our array
+    ctx.fillStyle = '#ff6b6b' // Coral/Red color for delivery target houses
+    for (let i = 0; i < houses.length; i++) {
+        let h = houses[i];
+        ctx.fillRect(h.x, h.y, h.width, h.height);
+    }
     // The Modulo  Trick: Keeps offset resetting between 0 and 399
     let offset = scrolly % canvas.height;
 
