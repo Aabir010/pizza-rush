@@ -78,8 +78,9 @@ function animate() {
     camera.position.y = playerCube.position.y + 3.0; // Stay elevated at a 3-unit altitude looking down
     camera.position.z = playerCube.position.z + 6.0; // Stay trailing exactly 6 units behind the player's position
 
-    // Force the camera focal point to track the cube's dynamic coordinates
-    camera.lookAt(playerCube.position.x, playerCube.position.y, playerCube.position.z);
+    // 4. CALL lookAt POINTED AT THE PLAYER OBJECT EVERY FRAME
+    // Passing the position vector object directly tells the lens to look at the player's center
+    camera.lookAt(playerCube.position);
 
     // D. Render update matrix context values frame-by-frame
     renderer.render(scene, camera);
