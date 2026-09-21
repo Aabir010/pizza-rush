@@ -31,79 +31,86 @@ let pizzas3D = []; // Dynamic list tracking active pizza meshes in flight
 // ==========================================
 const scene = new THREE.Scene();
 
+// 🎨 VISUAL ANCHOR: Anime Summer Sky Color
+// Replaces the black void with a bright, sunny atmosphere from your reference panels!
+scene.background = new THREE.Color('#7ec0ee'); 
+
 // Set up perspective viewport lens
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true }); // Smooths jagged pixel edges
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+
+// --- LIGHTING ENGINES (Required for Standard Materials!) ---
+// A. Ambient Light: Soft, omnidirectional sky glow that fills in dark shadows
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+// B. Directional Light: Mimics distinct, crisp summer sunlight beaming down from overhead
+const sunLight = new THREE.DirectionalLight(0xfffaed, 0.8);
+sunLight.position.set(5, 12, 4); // Angle it from the top-right sky
+scene.add(sunLight);
 
 // ==========================================
 // 3. DICTIONARY GENERATION: RAINBOW TRACK SECTIONS
 // ==========================================
 // FIXED: Removed duplicate 'segmentLength', 'numSegments', and 'roadSegments' redeclarations!
 
-const roadGeometry = new THREE.PlaneGeometry(10, segmentLength);
+// A massive green plane dropped under everything to act as the grass country fields
+const grassGeo = new THREE.PlaneGeometry(1000, 1000);
+const grassMat = new THREE.MeshStandardMaterial({ color: 0x44aa77, roughness: 0.9 });
+const grass = new THREE.Mesh(grassGeo, grassMat);
+grass.rotation.x = -Math.PI / 2;
+grass.position.y = -0.01; // Slightly lower than the road to prevent mesh clipping bugs
+scene.add(grass);
 
-// Array of distinct test colors to label each individual tile segment
-const trackColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44]; // Red, Green, Blue, Yellow
+
+// ==========================================
+// 4. GENERATING THE SEGMENTED ROAD TREADMILL
+// ==========================================
+const roadGeometry = new THREE.PlaneGeometry(10, segmentLength);
+// Swapped to MeshStandardMaterial to listen to light rays and reflections!
+const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x2c2c2c, roughness: 0.7 });
 
 for (let i = 0; i < numSegments; i++) {
-    // Dynamic material assignment per iteration using our color dictionary
-    const roadMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0x333333, 
-        side: THREE.DoubleSide 
-    });
-    
     const roadSegment = new THREE.Mesh(roadGeometry, roadMaterial);
     roadSegment.rotation.x = -Math.PI / 2;
-    
-    // Initial edge alignment stacking layout
     roadSegment.position.z = -i * segmentLength;
-    
     scene.add(roadSegment);
     roadSegments.push(roadSegment); 
 }
 
 // ==========================================
-// 3.5 GENERATING THE RECYCLING HOUSE POOL 🏡
+// 5. GENERATING THE RECYCLING HOUSE POOL 🏡
 // ==========================================
-const houseGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5); // A simple placeholder 3D box
+const houseGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5); 
 
 for (let i = 0; i < numHouses; i++) {
-    // We create individual materials per house so they can toggle color independently!
-    const houseMaterial = new THREE.MeshBasicMaterial({ color: 0xff6b6b }); 
+    // Unique standard materials per house instance
+    const houseMaterial = new THREE.MeshStandardMaterial({ color: 0xff6b6b, roughness: 0.5 }); 
     const houseMesh = new THREE.Mesh(houseGeometry, houseMaterial);
     
-    // Pick a side randomly for the initial layout setup: Left shoulder (-6.5) or Right shoulder (6.5)
     let initialSideX = Math.random() < 0.5 ? -6.5 : 6.5;
-    
-    // Position it: sit on top of the ground (Y = 0.75) and stagger down the road Z line
     houseMesh.position.set(initialSideX, 0.75, -i * houseSpacing - 15);
     
-    // THE GENUINELY NEW IDEA: Inject custom game state variables into userData slot
-    houseMesh.userData = {
-        hasDelivered: false
-    };
-    
+    houseMesh.userData = { hasDelivered: false };
     scene.add(houseMesh);
-    housePool.push(houseMesh); // Push into our tracking roster pool
+    housePool.push(houseMesh); 
 }
 
-
 // ==========================================
-// 4. CREATING THE CONTROLLABLE PLAYER OBJECT
+// 6. CREATING THE CONTROLLABLE PLAYER VEHICLE 🏎️
 // ==========================================
 const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
-const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffcc, roughness: 0.3 });
 const playerCube = new THREE.Mesh(playerGeometry, playerMaterial);
-
-// Elevated at Y=0.5 so its center rests cleanly on top of the asphalt surface floor mesh
 playerCube.position.set(0, 0.5, 2); 
 scene.add(playerCube);
 
 // ==========================================
-// 5. INTERACTIVE KEYBOARD EVENT LISTENERS
+// 7. INTERACTIVE KEYBOARD EVENT LISTENERS
 // ==========================================
 document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') movingLeft = true;
@@ -147,6 +154,26 @@ document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowDown') braking = false;      // Released brake pedal
 });
 
+
+// --- UNIVERSAL 3D BOX AABB COLLISION DETECTION ---
+function isColliding3D(meshA, meshB) {
+    const boxA = {
+        minX: meshA.position.x - 0.2, maxX: meshA.position.x + 0.2,
+        minY: meshA.position.y - 0.2, maxY: meshA.position.y + 0.2,
+        minZ: meshA.position.z - 0.2, maxZ: meshA.position.z + 0.2
+    };
+    const boxB = {
+        minX: meshB.position.x - 0.75, maxX: meshB.position.x + 0.75,
+        minY: meshB.position.y - 0.75, maxY: meshB.position.y + 0.75,
+        minZ: meshB.position.z - 0.75, maxZ: meshB.position.z + 0.75
+    };
+    return (
+        boxA.minX <= boxB.maxX && boxA.maxX >= boxB.minX &&
+        boxA.minY <= boxB.maxY && boxA.maxY >= boxB.minY &&
+        boxA.minZ <= boxB.maxZ && boxA.maxZ >= boxB.minZ
+    );
+}
+
 // ==========================================
 // 6. THE ANIMATED VIEWPORT LOOP WITH RECYCLING
 // ==========================================
@@ -161,7 +188,7 @@ function animate() {
     // 2. CLAMP VALUE
     if (forwardSpeed < minSpeed) forwardSpeed = minSpeed;
     if (forwardSpeed > maxSpeed) forwardSpeed = maxSpeed;
-    
+
     // A. Sideways Steering Input Math
     if (movingLeft) playerCube.position.x -= playerSpeed;
     if (movingRight) playerCube.position.x += playerSpeed;
@@ -172,6 +199,11 @@ function animate() {
 
     // B. Forward Progression Movement
     playerCube.position.z -= forwardSpeed;
+
+    // --- INFINITE ENVIRONMENT TRICK ---
+    // Make the giant grass plane track the player's position exactly on the Z axis.
+    // This stops it from running out, creating the illusion of boundless green fields!
+    grass.position.z = playerCube.position.z;
 
     // --- 3D SEGMENT RECYCLING LOGIC ---
     for (let i = 0; i < roadSegments.length; i++) {
@@ -211,16 +243,7 @@ function animate() {
         }
     }
 
-
-    // C. Live Chase-Cam Matrix Updates
-    camera.position.x = playerCube.position.x;       
-    camera.position.y = 3.0; 
-    camera.position.z = playerCube.position.z + 6.0; 
-
-    // Point the lens cleanly at the player object position vector
-    camera.lookAt(playerCube.position);
-
-        // ==========================================
+    // ==========================================
     // LAYER 7: 3D PIZZAS (PHYSICS, GRAVITY, COLLISIONS) 🍕
     // ==========================================
     const gravity = 0.006; // Constant downward acceleration vector pull
@@ -264,33 +287,16 @@ function animate() {
     
     pizzas3D = pizzas3D.filter(p => !p.userData.toRemove && p.position.z >= playerCube.position.z - 150);
 
+    // Chase Camera Matrix updates
+    camera.position.x = playerCube.position.x;       
+    camera.position.y = 3.0; 
+    camera.position.z = playerCube.position.z + 6.0; 
+    camera.lookAt(playerCube.position);
+
     // D. Render update matrix context values frame-by-frame
     renderer.render(scene, camera);
 }
 
-// --- UNIVERSAL 3D BOX AABB COLLISION DETECTION ---
-function isColliding3D(meshA, meshB) {
-    // Generate bounding boxes manually using position scales
-    // (Assuming boxes are sized symmetrically from their center coordinates)
-    const boxA = {
-        minX: meshA.position.x - 0.2, maxX: meshA.position.x + 0.2,
-        minY: meshA.position.y - 0.2, maxY: meshA.position.y + 0.2,
-        minZ: meshA.position.z - 0.2, maxZ: meshA.position.z + 0.2
-    };
-    
-    // Houses are 1.5 units across (BoxGeometry(1.5, 1.5, 1.5))
-    const boxB = {
-        minX: meshB.position.x - 0.75, maxX: meshB.position.x + 0.75,
-        minY: meshB.position.y - 0.75, maxY: meshB.position.y + 0.75,
-        minZ: meshB.position.z - 0.75, maxZ: meshB.position.z + 0.75
-    };
-
-    return (
-        boxA.minX <= boxB.maxX && boxA.maxX >= boxB.minX &&
-        boxA.minY <= boxB.maxY && boxA.maxX >= boxB.minY &&
-        boxA.minZ <= boxB.maxZ && boxA.maxZ >= boxB.minZ
-    );
-}
 
 // Kickstart engine execution
 animate();
