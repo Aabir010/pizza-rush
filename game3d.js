@@ -38,7 +38,7 @@ const trackColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44]; // Red, Green, Blu
 for (let i = 0; i < numSegments; i++) {
     // Dynamic material assignment per iteration using our color dictionary
     const roadMaterial = new THREE.MeshBasicMaterial({ 
-        color: trackColors[i], 
+        color: 0x333333, 
         side: THREE.DoubleSide 
     });
     
@@ -97,8 +97,9 @@ function animate() {
     for (let i = 0; i < roadSegments.length; i++) {
         let segment = roadSegments[i];
         
-        // If a segment's Z value is greater than the player's Z position plus a safe trailing margin...
-        if (segment.position.z > playerCube.position.z + 25) {
+        // REPAIRED: Threshold increased from 25 to 35 to give the trailing camera 
+        // plenty of clearance room before the tile teleports to the front!
+        if (segment.position.z > playerCube.position.z + 35) {
             
             // Teleport the tile forward to the absolute front of the queue seamlessly
             segment.position.z -= numSegments * segmentLength;
