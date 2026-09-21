@@ -18,6 +18,9 @@ const houseSpacing = 30; // Spaced out every 30 units along the Z axis
 const numHouses = 8;     // A fixed pool of 8 houses active in rotation
 let housePool = [];      // Array to store our active house meshes
 
+// --- 3D PIZZA PROJECTILE ENGINE STATE ---
+let pizzas3D = []; // Dynamic list tracking active pizza meshes in flight
+
 // ==========================================
 // 2. THE 3D ENVIRONMENT SETUP
 // ==========================================
@@ -100,6 +103,33 @@ scene.add(playerCube);
 document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') movingLeft = true;
     if (e.key === 'ArrowRight') movingRight = true;
+
+ // --- 3D PIZZA LAUNCH SEQUENCE ON SPACEBAR TAP ---
+    if ((e.key === ' ' || e.code === 'Space') && !e.repeat) {
+        
+        // 1. Define the 3D projectile shape and cheese-yellow material
+        const pizzaGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        const pizzaMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+        const pizzaMesh = new THREE.Mesh(pizzaGeo, pizzaMat);
+        
+        // 2. Spawn it centered right at the hood of the player car (elevated at Y=0.8)
+        pizzaMesh.position.set(playerCube.position.x, 0.8, playerCube.position.z - 0.5);
+        
+        // 3. Trajectory Math: Determine multi-axis flight vectors
+        let vx = 0;
+        if (movingLeft) vx = -0.15;  // Arc left if steering left
+        if (movingRight) vx = 0.15;  // Arc right if steering right
+        
+        pizzaMesh.userData = {
+            vx: vx,
+            vy: 0.15,               // Upward toss impulse lift
+            vz: -forwardSpeed - 0.3, // Match player speed PLUS extra forward velocity pop!
+            toRemove: false
+        };
+        
+        scene.add(pizzaMesh);
+        pizzas3D.push(pizzaMesh);
+    }
 });
 
 document.addEventListener('keyup', (e) => {
@@ -171,8 +201,76 @@ function animate() {
     // Point the lens cleanly at the player object position vector
     camera.lookAt(playerCube.position);
 
+        // ==========================================
+    // LAYER 7: 3D PIZZAS (PHYSICS, GRAVITY, COLLISIONS) 🍕
+    // ==========================================
+    const gravity = 0.006; // Constant downward acceleration vector pull
+
+    for (let i = 0; i < pizzas3D.length; i++) {
+        let pizza = pizzas3D[i];
+        
+        // 1. Apply active gravitational drag down on the vertical Y axis
+        pizza.userData.vy -= gravity;
+        
+        // 2. Update multi-axis position coordinates based on live velocities
+        pizza.position.x += pizza.userData.vx;
+        pizza.position.y += pizza.userData.vy;
+        pizza.position.z += pizza.userData.vz;
+        
+        // 3. Bounce / Splat floor limit safety (stop it from falling through the world floor mesh)
+        if (pizza.position.y < 0.1) {
+            pizza.position.y = 0.1;
+            pizza.userData.vy = 0;  // Kill upward momentum
+            pizza.userData.vx *= 0.5; // Friction slowdown on impact
+        }
+
+        // 4. SCAN FOR 3D TARGET INTERSECTIONS
+        for (let j = 0; j < housePool.length; j++) {
+            let house = housePool[j];
+            
+            if (!house.userData.hasDelivered && isColliding3D(pizza, house)) {
+                house.userData.hasDelivered = true; // Target turns Green!
+                pizza.userData.toRemove = true;      // Flag pizza to be vaporized
+            }
+        }
+    }
+
+    // 5. DECOUPLED GARBAGE COLLECTION CLEANUP
+    // Filter out spent ammo blocks or things that fly too far down the highway
+    pizzas3D.forEach(p => {
+        if (p.userData.toRemove || p.position.z < playerCube.position.z - 150) {
+            scene.remove(p); // Erase physical body geometry node out of the active scene map
+        }
+    });
+    
+    pizzas3D = pizzas3D.filter(p => !p.userData.toRemove && p.position.z >= playerCube.position.z - 150);
+
     // D. Render update matrix context values frame-by-frame
     renderer.render(scene, camera);
+}
+
+// --- UNIVERSAL 3D BOX AABB COLLISION DETECTION ---
+function isColliding3D(meshA, meshB) {
+    // Generate bounding boxes manually using position scales
+    // (Assuming boxes are sized symmetrically from their center coordinates)
+    const boxA = {
+        minX: meshA.position.x - 0.2, maxX: meshA.position.x + 0.2,
+        minY: meshA.position.y - 0.2, maxY: meshA.position.y + 0.2,
+        minZ: meshA.position.z - 0.2, maxZ: meshA.position.z + 0.2
+    };
+    
+    // Houses are 1.5 units across (BoxGeometry(1.5, 1.5, 1.5))
+    const boxB = {
+        minX: meshB.position.x - 0.75, maxX: meshB.position.x + 0.75,
+        minY: meshB.position.y - 0.75, maxY: meshB.position.y + 0.75,
+        minZ: meshB.position.z - 0.75, maxZ: meshB.position.z + 0.75
+    };
+
+    return (
+        boxA.minX <= boxB.maxX && boxA.maxX >= boxB.minX &&
+        boxA.minY <= boxB.maxY && boxA.maxX >= boxB.minY &&
+        boxA.minZ <= boxB.maxZ && boxA.maxZ >= boxB.minZ
+    );
 }
 
 // Kickstart engine execution
