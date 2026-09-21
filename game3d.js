@@ -13,6 +13,11 @@ const segmentLength = 50;  // How long each tile is along the Z axis
 const numSegments = 4;     // Total number of tiles in rotation (Total road pool = 200 units)
 let roadSegments = [];     // Array to store our active plane meshes
 
+// --- 3D HOUSE TREADMILL POOL CONFIGURATION ---
+const houseSpacing = 30; // Spaced out every 30 units along the Z axis
+const numHouses = 8;     // A fixed pool of 8 houses active in rotation
+let housePool = [];      // Array to store our active house meshes
+
 // ==========================================
 // 2. THE 3D ENVIRONMENT SETUP
 // ==========================================
@@ -51,6 +56,32 @@ for (let i = 0; i < numSegments; i++) {
     scene.add(roadSegment);
     roadSegments.push(roadSegment); 
 }
+
+// ==========================================
+// 3.5 GENERATING THE RECYCLING HOUSE POOL 🏡
+// ==========================================
+const houseGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5); // A simple placeholder 3D box
+
+for (let i = 0; i < numHouses; i++) {
+    // We create individual materials per house so they can toggle color independently!
+    const houseMaterial = new THREE.MeshBasicMaterial({ color: 0xff6b6b }); 
+    const houseMesh = new THREE.Mesh(houseGeometry, houseMaterial);
+    
+    // Pick a side randomly for the initial layout setup: Left shoulder (-6.5) or Right shoulder (6.5)
+    let initialSideX = Math.random() < 0.5 ? -6.5 : 6.5;
+    
+    // Position it: sit on top of the ground (Y = 0.75) and stagger down the road Z line
+    houseMesh.position.set(initialSideX, 0.75, -i * houseSpacing - 15);
+    
+    // THE GENUINELY NEW IDEA: Inject custom game state variables into userData slot
+    houseMesh.userData = {
+        hasDelivered: false
+    };
+    
+    scene.add(houseMesh);
+    housePool.push(houseMesh); // Push into our tracking roster pool
+}
+
 
 // ==========================================
 // 4. CREATING THE CONTROLLABLE PLAYER OBJECT
@@ -105,6 +136,32 @@ function animate() {
             segment.position.z -= numSegments * segmentLength;
         }
     }
+
+        // --- 3D HOUSE POOL RECYCLING & STATE RENDERING LOGIC ---
+    for (let i = 0; i < housePool.length; i++) {
+        let house = housePool[i];
+
+        // 1. STATE-BASED COLORING: Read the custom data state and set the visual hex color
+        if (house.userData.hasDelivered) {
+            house.material.color.setHex(0x66bb6a); // Lawn Green on delivery success
+        } else {
+            house.material.color.setHex(0xff6b6b); // Coral Red for active targets
+        }
+
+        // 2. RECYCLING CHECK: Clear using the exact same camera trailing algebra (+35 clearance margin)
+        if (house.position.z > playerCube.position.z + 35) {
+            
+            // Teleport the house to the very front of the active house generation horizon line
+            house.position.z -= numHouses * houseSpacing;
+            
+            // Randomize its track shoulder position for the next lap encounter!
+            house.position.x = Math.random() < 0.5 ? -6.5 : 6.5;
+            
+            // CRITICAL RESET: Re-arm the target so it stands ready as a fresh delivery node
+            house.userData.hasDelivered = false;
+        }
+    }
+
 
     // C. Live Chase-Cam Matrix Updates
     camera.position.x = playerCube.position.x;       
