@@ -3,10 +3,15 @@
 // ==========================================
 let movingLeft = false;
 let movingRight = false;
+let accelerating = false; // New acceleration input flag
+let braking = false;      // New brake input flag
+
 const playerSpeed = 0.15; // Sideways steering response increment
 
 // --- 3D FORWARD VELOCITY STATS ---
 let forwardSpeed = 0.2;   // The velocity pushing the player ahead along the Z-axis
+const minSpeed = 0.1;     // Base walking cruise speed (never drops to a complete stop)
+const maxSpeed = 0.6;     // Thrilling top speed velocity limit
 
 // --- TREADMILL CONFIGURATION ---
 const segmentLength = 50;  // How long each tile is along the Z axis
@@ -103,6 +108,9 @@ scene.add(playerCube);
 document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') movingLeft = true;
     if (e.key === 'ArrowRight') movingRight = true;
+    if (e.key === 'ArrowUp') accelerating = true;   // Engaged gas pedal
+    if (e.key === 'ArrowDown') braking = true;       // Engaged brake pedal
+
 
  // --- 3D PIZZA LAUNCH SEQUENCE ON SPACEBAR TAP ---
     if ((e.key === ' ' || e.code === 'Space') && !e.repeat) {
@@ -135,6 +143,8 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowLeft') movingLeft = false;
     if (e.key === 'ArrowRight') movingRight = false;
+    if (e.key === 'ArrowUp') accelerating = false;  // Released gas pedal
+    if (e.key === 'ArrowDown') braking = false;      // Released brake pedal
 });
 
 // ==========================================
@@ -143,6 +153,15 @@ document.addEventListener('keyup', (e) => {
 function animate() {
     requestAnimationFrame(animate);
 
+    // --- 3D THROTTLE ENGINE MANIPULATION ---
+    // 1. READ FLAGS & CHANGE VALUE
+    if (accelerating) forwardSpeed += 0.005; // Build momentum smoothly up
+    if (braking) forwardSpeed -= 0.01;      // Brake response clamps down faster
+
+    // 2. CLAMP VALUE
+    if (forwardSpeed < minSpeed) forwardSpeed = minSpeed;
+    if (forwardSpeed > maxSpeed) forwardSpeed = maxSpeed;
+    
     // A. Sideways Steering Input Math
     if (movingLeft) playerCube.position.x -= playerSpeed;
     if (movingRight) playerCube.position.x += playerSpeed;
